@@ -2,7 +2,8 @@
 #define KDE_METHOD
 //#define CHI_SQUARE_TEST
 //#define _DEBUG_
-
+// using namespace cv;
+// using namespace std;
 namespace perls
 {
     Calibration::Calibration (char *configFile)
@@ -85,12 +86,12 @@ namespace perls
         this->m_estimatorType = config_get_int_or_default (this->m_ConfigHandle, "calibration.estimator_type", 1);
         //set target distribution;
 #if 1
-        this->m_jointTarget = cv::Mat::eye (this->m_numBins, this->m_numBins, CV_32FC1)/(this->m_numBins);
+        this->m_jointTarget = Mat::eye (this->m_numBins, this->m_numBins, CV_32FC1)/(this->m_numBins);
         //this->m_jointTarget = this->m_jointTarget + 1.0/(256*256);
         //this->m_jointTarget = this->m_jointTarget/2.0;
-        //cv::GaussianBlur (this->m_jointTarget, this->m_jointTarget, cv::Size (0,0), 25);  
-        this->m_grayTarget = cv::Mat::ones (1, this->m_numBins, CV_32FC1)/this->m_numBins;
-        this->m_refcTarget = cv::Mat::ones (1, this->m_numBins, CV_32FC1)/this->m_numBins;
+        //GaussianBlur (this->m_jointTarget, this->m_jointTarget, Size (0,0), 25);  
+        this->m_grayTarget = Mat::ones (1, this->m_numBins, CV_32FC1)/this->m_numBins;
+        this->m_refcTarget = Mat::ones (1, this->m_numBins, CV_32FC1)/this->m_numBins;
 #endif
 
 #if 0
@@ -98,9 +99,9 @@ namespace perls
         FILE *fptr_refc = fopen ("refcProb.txt", "r");
         FILE *fptr_gray = fopen ("grayProb.txt", "r");
    
-        this->m_jointTarget = cv::Mat::zeros (this->m_numBins, this->m_numBins, CV_32FC1);
-        this->m_grayTarget = cv::Mat::zeros (1, this->m_numBins, CV_32FC1); 
-        this->m_refcTarget = cv::Mat::zeros (1, this->m_numBins, CV_32FC1); 
+        this->m_jointTarget = Mat::zeros (this->m_numBins, this->m_numBins, CV_32FC1);
+        this->m_grayTarget = Mat::zeros (1, this->m_numBins, CV_32FC1); 
+        this->m_refcTarget = Mat::zeros (1, this->m_numBins, CV_32FC1); 
         int tempi, tempj;
         float sum = 0;
         for (int i = 0; i < this->m_numBins; i++)
@@ -115,7 +116,7 @@ namespace perls
             //sum = sum + this->m_jointTarget.at<float> (i, i);
         }
         //this->m_jointTarget = this->m_jointTarget/sum; 
-        //cv::GaussianBlur (this->m_jointTarget, this->m_jointTarget, cv::Size (0,0), 10);  
+        //GaussianBlur (this->m_jointTarget, this->m_jointTarget, Size (0,0), 10);  
         
         fclose (fptr_joint);  
         fclose (fptr_refc);  
@@ -275,9 +276,9 @@ namespace perls
             }
             //gaussian smoothing of images
             IplImage* out = cvCreateImage (cvGetSize(iplimage), IPL_DEPTH_8U, 1);
-            cv::Mat outMat (out);
-            cv::Mat imageMat (iplimage);
-            cv::GaussianBlur (imageMat, outMat, cv::Size (3, 3), 0.75); 
+            Mat outMat = cvarrToMat(out);
+            Mat imageMat = cvarrToMat(iplimage);
+            GaussianBlur (imageMat, outMat, Size (3, 3), 0.75); 
             currImage.image.push_back (out);
             cvReleaseImage (&iplimage); 
         }
@@ -555,7 +556,7 @@ namespace perls
           fflush (fptr);
           fclose (fptr);
         #endif
-        cv::GaussianBlur (probMLE.grayProb, probMLE.grayProb, cv::Size(0, 0), sigma_gray);
+        GaussianBlur (probMLE.grayProb, probMLE.grayProb, Size(0, 0), sigma_gray);
         #ifdef _DEBUG_
           fptr = fopen ("gray_prob_smooth.txt", "w");
           for (int i = 0; i < this->m_numBins; i++)
@@ -564,9 +565,9 @@ namespace perls
           fclose (fptr);
         #endif
         
-        cv::GaussianBlur (probMLE.refcProb, probMLE.refcProb, cv::Size(0, 0), sigma_refc);
+        GaussianBlur (probMLE.refcProb, probMLE.refcProb, Size(0, 0), sigma_refc);
         
-        cv::GaussianBlur (probMLE.jointProb, probMLE.jointProb, cv::Size(0, 0), sigma_gray, sigma_refc);
+        GaussianBlur (probMLE.jointProb, probMLE.jointProb, Size(0, 0), sigma_gray, sigma_refc);
         probMLE.count = hist.count; 
         return probMLE; 
     }
@@ -588,10 +589,10 @@ namespace perls
         //Here t_k      = target distribution (here m_jointTarget)
         //     \theta_k = MLE estimate (here probMLE.jointProb)  
         **/
-        float squareSumMLE = cv::norm (probMLE.jointProb);
+        float squareSumMLE = norm (probMLE.jointProb);
         squareSumMLE = (squareSumMLE*squareSumMLE); 
         //Difference of MLE from the target 
-        float squareDiffMLETarget = cv::norm (this->m_jointTarget, probMLE.jointProb);
+        float squareDiffMLETarget = norm (this->m_jointTarget, probMLE.jointProb);
         squareDiffMLETarget =  (squareDiffMLETarget*squareDiffMLETarget);
          
         float lambda = (1.0-squareSumMLE)/squareDiffMLETarget;
@@ -612,11 +613,11 @@ namespace perls
         Probability probJS (this->m_numBins);
 
         probJS.jointProb = this->m_jointTarget*lambda + probMLE.jointProb*(1.0-lambda);
-        //cv::GaussianBlur (jointJSEstimate, jointJSEstimate, cv::Size(5, 5), 1.2, 1.2);
+        //GaussianBlur (jointJSEstimate, jointJSEstimate, Size(5, 5), 1.2, 1.2);
         probJS.grayProb = this->m_grayTarget*lambda + probMLE.grayProb*(1.0-lambda);
-        //cv::GaussianBlur (margJSEstimate1, margJSEstimate1, cv::Size(1, 5), 0, 1.2);
+        //GaussianBlur (margJSEstimate1, margJSEstimate1, Size(1, 5), 0, 1.2);
         probJS.refcProb = this->m_refcTarget*lambda + probMLE.refcProb*(1.0-lambda);
-        //cv::GaussianBlur (margJSEstimate2, margJSEstimate2, cv::Size(1, 5), 0, 1.2);
+        //GaussianBlur (margJSEstimate2, margJSEstimate2, Size(1, 5), 0, 1.2);
         
         return probJS;
     }
@@ -671,11 +672,11 @@ namespace perls
         sigma_gray = 1.06*sqrt (sigma_gray)/pow (hist.count, 0.2);
         sigma_refc = 1.06*sqrt (sigma_refc)/pow (hist.count, 0.2); 
         
-        cv::GaussianBlur (probBayes.grayProb, probBayes.grayProb, cv::Size(0, 0), sigma_gray);
+        GaussianBlur (probBayes.grayProb, probBayes.grayProb, Size(0, 0), sigma_gray);
         
-        cv::GaussianBlur (probBayes.refcProb, probBayes.refcProb, cv::Size(0, 0), sigma_refc);
+        GaussianBlur (probBayes.refcProb, probBayes.refcProb, Size(0, 0), sigma_refc);
         
-        cv::GaussianBlur (probBayes.jointProb, probBayes.jointProb, cv::Size(0, 0), sigma_gray, sigma_refc);
+        GaussianBlur (probBayes.jointProb, probBayes.jointProb, Size(0, 0), sigma_gray, sigma_refc);
 
         return probBayes; 
     }
@@ -705,26 +706,44 @@ namespace perls
         }
 
         //Calculate log of JS estimate
-        cv::Mat jointLog = cv::Mat::zeros(this->m_numBins, this->m_numBins, CV_32FC1);
-        cv::Mat grayLog = cv::Mat::zeros(1, this->m_numBins, CV_32FC1); 
-        cv::Mat refcLog = cv::Mat::zeros(1, this->m_numBins, CV_32FC1);
+        Mat jointLog = Mat::zeros(this->m_numBins, this->m_numBins, CV_32FC1);
+        Mat grayLog = Mat::zeros(1, this->m_numBins, CV_32FC1); 
+        Mat refcLog = Mat::zeros(1, this->m_numBins, CV_32FC1);
  
-        cv::log (prob.jointProb, jointLog);
-        cv::log (prob.grayProb, grayLog);
-        cv::log (prob.refcProb, refcLog);
+        log (prob.jointProb, jointLog);
+        log (prob.grayProb, grayLog);
+        log (prob.refcProb, refcLog);
         
-        cv::Mat jointEntropyMat, grayEntropyMat, refcEntropyMat;
+        Mat jointEntropyMat, grayEntropyMat, refcEntropyMat;
         //jointEntropyMat = jointJSEstimate*jointJSLog;
-        cv::multiply (prob.jointProb, jointLog, jointEntropyMat);
+        multiply (prob.jointProb, jointLog, jointEntropyMat);
         //margEntropyMat1 = margJSEstimate1*margJSLog1;
-        cv::multiply (prob.grayProb, grayLog, grayEntropyMat); 
+        multiply (prob.grayProb, grayLog, grayEntropyMat); 
         //margEntropyMat2 = margJSEstimate2*margJSLog2;
-        cv::multiply (prob.refcProb, refcLog, refcEntropyMat); 
+        multiply (prob.refcProb, refcLog, refcEntropyMat); 
         
+        //nan correction
+        for(int i=0;i<this->m_numBins;i++)
+        {
+            for (int j = 0; j < this->m_numBins; j++)
+            {
+                float tmp = jointEntropyMat.at<float>(i,j);
+                if (tmp != tmp)
+                    jointEntropyMat.at<float>(i,j) = 0.0;
+            }
+        }
+        
+        for (int j = 0; j < this->m_numBins; j++)
+        {
+            double tmp = refcEntropyMat.at<float>(j);
+            if (tmp!=tmp)
+                refcEntropyMat.at<float>(j) = 0.0;
+        }
+
         //Sum all the elements
-        float Hx  = cv::norm (grayEntropyMat, cv::NORM_L1);
-        float Hy  = cv::norm (refcEntropyMat, cv::NORM_L1);
-        float Hxy = cv::norm (jointEntropyMat, cv::NORM_L1);
+        float Hx  = norm (grayEntropyMat, NORM_L1);
+        float Hy  = norm (refcEntropyMat, NORM_L1);
+        float Hxy = norm (jointEntropyMat, NORM_L1);
         
         float cost = Hx + Hy - Hxy;
         //float cost = Hxy;
@@ -1145,12 +1164,12 @@ namespace perls
         //Probability P_minus_drz = get_probability_MLE (tempX);
 
         //Calculate derivative of log of probability distribution
-        cv::Mat dLnP_dtx = cv::Mat::zeros (this->m_numBins, this->m_numBins, CV_32FC1);
-        cv::Mat dLnP_dty = cv::Mat::zeros (this->m_numBins, this->m_numBins, CV_32FC1);
-        cv::Mat dLnP_dtz = cv::Mat::zeros (this->m_numBins, this->m_numBins, CV_32FC1);
-        cv::Mat dLnP_drx = cv::Mat::zeros (this->m_numBins, this->m_numBins, CV_32FC1);
-        cv::Mat dLnP_dry = cv::Mat::zeros (this->m_numBins, this->m_numBins, CV_32FC1);
-        cv::Mat dLnP_drz = cv::Mat::zeros (this->m_numBins, this->m_numBins, CV_32FC1);
+        Mat dLnP_dtx = Mat::zeros (this->m_numBins, this->m_numBins, CV_32FC1);
+        Mat dLnP_dty = Mat::zeros (this->m_numBins, this->m_numBins, CV_32FC1);
+        Mat dLnP_dtz = Mat::zeros (this->m_numBins, this->m_numBins, CV_32FC1);
+        Mat dLnP_drx = Mat::zeros (this->m_numBins, this->m_numBins, CV_32FC1);
+        Mat dLnP_dry = Mat::zeros (this->m_numBins, this->m_numBins, CV_32FC1);
+        Mat dLnP_drz = Mat::zeros (this->m_numBins, this->m_numBins, CV_32FC1);
 
 #if 0
         for (int i = 0; i < this->m_numBins; i++)

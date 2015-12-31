@@ -12,6 +12,8 @@
 //Opencv
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
+#include "opencv2/opencv.hpp"
+
 
 //GSL (GNU Scientific Library)
 #include <gsl/gsl_linalg.h>
@@ -49,6 +51,8 @@
 #define CAM_PARAM_CONFIG_PATH "../config/master.cfg"
 #define RANGE_THRESH 5.0 //in m
 
+using namespace cv;
+using namespace std;
 //Structure to hold calibration parameters
 typedef struct _CalibParam CalibParam_t;
 struct _CalibParam
@@ -77,7 +81,7 @@ struct _Point3d
 typedef struct _PointCloud PointCloud_t; 
 struct _PointCloud
 {
-    std::vector<Point3d_t> points;
+    vector<Point3d_t> points;
 };
 
 //Structure to hold grid parameters. This is used for grid-based search
@@ -98,7 +102,7 @@ struct _GridParam
 typedef struct _Image Image_t;
 struct _Image
 {
-    std::vector<IplImage*> image;
+    vector<IplImage*> image;
 };
 
 namespace perls
@@ -109,18 +113,18 @@ namespace perls
           Probability (){};
           Probability (int n)
           {
-              jointProb = cv::Mat::zeros (n, n, CV_32FC1);
-              refcProb = cv::Mat::zeros (1, n, CV_32FC1);
-              grayProb = cv::Mat::zeros (1, n, CV_32FC1);
+              jointProb = Mat::zeros (n, n, CV_32FC1);
+              refcProb = Mat::zeros (1, n, CV_32FC1);
+              grayProb = Mat::zeros (1, n, CV_32FC1);
               count = 0;
           };
           ~Probability () {};
           //joint Probability
-          cv::Mat jointProb;
+          Mat jointProb;
           //marginal probability reflectivity
-          cv::Mat refcProb;
+          Mat refcProb;
           //marginal probability grayscale
-          cv::Mat grayProb;
+          Mat grayProb;
           int count;
     };
 
@@ -130,16 +134,16 @@ namespace perls
           Histogram (){};
           Histogram (int n)
           {
-              jointHist = cv::Mat::zeros (n, n, CV_32FC1);
-              refcHist = cv::Mat::zeros (1, n, CV_32FC1);
-              grayHist = cv::Mat::zeros (1, n, CV_32FC1);
+              jointHist = Mat::zeros (n, n, CV_32FC1);
+              refcHist = Mat::zeros (1, n, CV_32FC1);
+              grayHist = Mat::zeros (1, n, CV_32FC1);
               count = 0;
           };
           ~Histogram () {};
           //joint Histogram
-          cv::Mat jointHist;
-          cv::Mat refcHist;
-          cv::Mat grayHist; 
+          Mat jointHist;
+          Mat refcHist;
+          Mat grayHist; 
           int count;
           int gray_sum;
           int refc_sum;
@@ -200,17 +204,17 @@ namespace perls
           float grid_search_translation (GridParam_t *gridParam); 
           /*****************************/
        private:
-          std::vector<PointCloud_t> m_vecPointClouds;
-          std::vector<Image_t> m_vecImage;
+          vector<PointCloud_t> m_vecPointClouds;
+          vector<Image_t> m_vecImage;
           Image_t m_Mask;
           CalibParam_t m_Calib;
           Config *m_ConfigHandle;
           char *m_ConfigFile;
           int m_NumScans;
           int m_NumCams;
-          cv::Mat m_jointTarget;
-          cv::Mat m_grayTarget;
-          cv::Mat m_refcTarget;
+          Mat m_jointTarget;
+          Mat m_grayTarget;
+          Mat m_refcTarget;
           int m_numBins;
           int m_binFraction; 
     };

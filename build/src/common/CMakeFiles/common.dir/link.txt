@@ -1,0 +1,2 @@
+/usr/bin/ar cr ../../../lib/libcommon.a  CMakeFiles/common.dir/config.c.o CMakeFiles/common.dir/fasttrig.c.o CMakeFiles/common.dir/gsl_util.c.o CMakeFiles/common.dir/small_linalg.c.o CMakeFiles/common.dir/ssc.c.o CMakeFiles/common.dir/timestamp.c.o
+/usr/bin/ranlib ../../../lib/libcommon.a
