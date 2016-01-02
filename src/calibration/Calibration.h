@@ -1,19 +1,26 @@
 #ifndef _CALIBRATION_H_
 #define _CALIBRATION_H_
+
 /**
  * The base class for scan representation.  
  */
+
+ //device option
+#ifndef _DEVICE_
+#define _DEVICE_ CPU
+#endif
 
 //Standard C/C++ Library
 #include <iostream>
 #include <fstream>
 #include <string.h>
+#include <time.h>
 
 //Opencv
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 #include "opencv2/opencv.hpp"
-
+#include <opencv2/gpu.hpp>        // GPU structures and methods
 
 //GSL (GNU Scientific Library)
 #include <gsl/gsl_linalg.h>

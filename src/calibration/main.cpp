@@ -93,7 +93,10 @@ main (int argc, char** argv)
     fclose (fptr_out);
 
     //Calculate covariance
+    tic = timestamp_now ();
     gsl_matrix* cov = calib.calculate_covariance_matrix (calib.m_X0);
+    toc = timestamp_now ();
+    printf ("Time taken for correlation= %f seconds\n", (toc - tic)/1e6);
     
     FILE *fptr_cov = fopen ("calib_cov.txt", "w"); 
     printf ("Variance of parameters:\n"); 

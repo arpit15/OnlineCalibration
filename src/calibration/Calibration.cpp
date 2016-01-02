@@ -1,4 +1,5 @@
 #include "Calibration.h"
+#include "timestamp.h"
 #define KDE_METHOD
 //#define CHI_SQUARE_TEST
 //#define _DEBUG_
@@ -364,9 +365,12 @@ namespace perls
     {
         //Get the transformation
         ssc_pose_t X_il;
+        clock_t t1,t2;
+        t1=clock();
         double **t = (double**) malloc (sizeof (double*)*this->m_NumCams);
         double **R = (double**) malloc (sizeof (double*)*this->m_NumCams);
         
+        //gets t and R for each camera
         for (int i = 0; i < this->m_NumCams; i++)
         {
             t[i] = (double*) malloc (sizeof (double)*3);
@@ -421,14 +425,40 @@ namespace perls
                     laser_xyz[0] = point.x; laser_xyz[1] = point.y; laser_xyz[2] = point.z;
                     if (point.range < 1)
                     {
-                        matrix_vector_multiply_3x3_3d (R[j], laser_xyz, temp);
-                        vector_add_3d (t[j], temp, camera_xyz);
+                        // on cpu
+                        if (_DEVICE_== "CPU")
+                        {    
+                            matrix_vector_multiply_3x3_3d (R[j], laser_xyz, temp);
+                            vector_add_3d (t[j], temp, camera_xyz);
+                        }
+
+                        //on gpu
+                        else if (_DEVICE_== "GPU")
+                        {    
+                            cuda::GpuMat cP(laser_xyz), cR(R[j]), c_t(t[j], c_camera_xyz;
+                            cuda::multiply(cR, cP, c_camera_xyz);
+                            cuda::add(c_t, c_camera_xyz, c_camera_xyz, c_camera_xyz);
+                            camera_xyz = c_camera_xyz;
+                        }
+                        // test for z
                         if (camera_xyz[2] > 0)
                         {
                             //this point lies infront of this camera
                             //calculate projection on image
                             double image_point[3];
-                            matrix_vector_multiply_3x3_3d (this->m_Calib.K[j], camera_xyz, image_point);
+                            
+                            //cpu
+                            if (_DEVICE_== "CPU")
+                                matrix_vector_multiply_3x3_3d (this->m_Calib.K[j], camera_xyz, image_point);
+                            
+                            //gpu
+                            else if (_DEVICE_== "GPU")
+                            {
+                                cuda::GpuMat cK(this->m_Calib.K[j]), c_image_point;
+                                cuda::multiply(cK, c_camera_xyz, c_image_point);
+                                image_point = c_image_point;
+                            }
+
                             int u = image_point[0]/image_point[2];
                             int v = image_point[1]/image_point[2];
                             //printf("u = %d, v = %d\n", u, v);
@@ -500,12 +530,18 @@ namespace perls
 
         hist.gray_sum = gray_sum;
         hist.refc_sum = refc_sum;
+        t2=clock();
+        float diff ((float)t2-(float)t1);
+        diff = diff/CLOCKS_PER_SEC;
+        cout<<diff<<endl;
         return hist;
     }
 
     Probability
     Calibration::get_probability_MLE (Histogram hist)
     {
+        // clock_t t1,t2;
+        // t1=clock();
         //Calculate sample covariance matrix
         float mu_gray = hist.gray_sum/hist.count;
         float mu_refc = hist.refc_sum/hist.count;
@@ -569,6 +605,10 @@ namespace perls
         
         GaussianBlur (probMLE.jointProb, probMLE.jointProb, Size(0, 0), sigma_gray, sigma_refc);
         probMLE.count = hist.count; 
+        // t2=clock();
+        // float diff ((float)t2-(float)t1);
+        // diff = diff/CLOCKS_PER_SEC;
+        // cout<<diff<<endl;
         return probMLE; 
     }
 
@@ -688,6 +728,8 @@ namespace perls
     Calibration::mi_cost (ssc_pose_t x0)
     {
         //Get MLE of probability distribution
+        // clock_t t1,t2;
+        // t1=clock();
         Histogram hist = get_histogram (x0);
         Probability prob;
         Probability probMLE; 
@@ -747,7 +789,12 @@ namespace perls
         
         float cost = Hx + Hy - Hxy;
         //float cost = Hxy;
+        // t2=clock();
+        // float diff ((float)t2-(float)t1);
+        // diff = diff/CLOCKS_PER_SEC;
+        // cout<<diff<<endl;
         return cost;
+
     }
     
     /**
@@ -884,6 +931,8 @@ namespace perls
     float
     Calibration::gradient_descent_search (ssc_pose_t x0_hl)
     {
+        // clock_t t1,t2;
+        // t1=clock();
         //step parameter
         double gama_trans = 0.01;
         double gama_rot = 0.001;
@@ -905,6 +954,9 @@ namespace perls
         double f_max = 0;
         while (index < MAX_ITER)
         {
+            int64_t tic = timestamp_now ();
+            // clock_t t1,t2;
+            // t1=clock();
             //Evaluate function value
             double f_prev;
             #ifdef CHI_SQUARE_TEST
@@ -1079,10 +1131,24 @@ namespace perls
             delF_delP_ = delF_delP;
             delF_delH_ = delF_delH;
 
+            // t2=clock();
+            // float diff ((float)t2-(float)t1);
+            // diff = diff/CLOCKS_PER_SEC;
+            // cout << "time per iter:" <<diff<<endl;
+            int64_t toc = timestamp_now ();
+            printf ("Time taken = %f seconds\n", (toc - tic)/1e6);
+
+
             printf ("%lf %lf %lf %lf %lf %lf %lf\n", f_curr, xk[0], xk[1], xk[2], xk[3]*RTOD, xk[4]*RTOD, xk[5]*RTOD);
+
+
     
         }
         ssc_pose_set (x0_hl, xk);
+        // t2=clock();
+        // float diff ((float)t2-(float)t1);
+        // diff = diff/CLOCKS_PER_SEC;
+        // cout<<diff<<endl;
         return index;
     }
 
